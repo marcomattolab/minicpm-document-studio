@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Subscription, interval, startWith, switchMap } from 'rxjs';
 import { TRANSLATIONS, type Lang, type UIStrings } from './translations';
@@ -110,6 +110,7 @@ type Job = { id: string; status: string; message: string; total: number; complet
 ` })
 export class AppComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
   private poll?: Subscription;
   @ViewChild('feedScroll') private feedScroll?: ElementRef<HTMLElement>;
 
@@ -151,7 +152,7 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const saved = localStorage.getItem('mds-lang');
     if (saved === 'it' || saved === 'en') this.setLang(saved);
-    this.http.get<Health>('/api/health').subscribe({ next: h => this.health = h, error: () => this.health = null });
+    this.http.get<Health>('/api/health').subscribe({ next: h => { this.health = h; this.cdr.detectChanges(); }, error: () => { this.health = null; this.cdr.detectChanges(); } });
   }
 
   setLang(lang: Lang): void {
@@ -163,7 +164,7 @@ export class AppComponent implements OnInit, OnDestroy {
   start(): void {
     this.busy = true; this.starting = true; this.job = null; this.modalVisible = false; this.now = Date.now();
     this.http.post<{id: string}>('/api/jobs', { source_dir: this.sourceDir, output_dir: this.outputDir, recursive: this.recursive, overwrite: this.overwrite }).subscribe({
-      next: result => { this.poll?.unsubscribe(); this.poll = interval(1000).pipe(startWith(0), switchMap(() => this.http.get<Job>(`/api/jobs/${result.id}`))).subscribe({ next: job => { const wasFinished = this.isFinished; this.job = job; this.starting = false; this.now = Date.now(); this.busy = !this.isFinished; if (this.isFinished && !wasFinished) this.modalVisible = true; setTimeout(() => this.scrollFeed(), 0); if (this.isFinished) this.poll?.unsubscribe(); }, error: () => { this.busy = false; this.starting = false; this.poll?.unsubscribe(); } }); },
+      next: result => { this.poll?.unsubscribe(); this.poll = interval(1000).pipe(startWith(0), switchMap(() => this.http.get<Job>(`/api/jobs/${result.id}`))).subscribe({ next: job => { const wasFinished = this.isFinished; this.job = job; this.starting = false; this.now = Date.now(); this.busy = !this.isFinished; if (this.isFinished && !wasFinished) this.modalVisible = true; this.cdr.detectChanges(); if (this.isFinished) this.poll?.unsubscribe(); setTimeout(() => this.scrollFeed(), 0); }, error: () => { this.busy = false; this.starting = false; this.poll?.unsubscribe(); this.cdr.detectChanges(); } }); },
       error: err => { this.busy = false; this.starting = false; alert(err.error?.detail ?? this.t.startError); }
     });
   }
