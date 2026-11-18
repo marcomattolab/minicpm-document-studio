@@ -1,0 +1,28 @@
+# Node
+node_modules/
+dist/
+
+# Python
+.venv/
+.venv-ocr/
+.minicpm-ocr/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# OCR SDK assets & run artifacts (downloaded at setup time)
+models/
+tools/
+.runs/
+runtime/
+
+# Local env
+.env
+.env.local
+
+# OS
+.DS_Store
+
+# Logs
+*.log
